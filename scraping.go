@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"regexp"
 
@@ -16,14 +15,14 @@ func FindLinks(url, regex string) (links []string) {
 	c := colly.NewCollector()
 
 	c.OnRequest(func(r *colly.Request) {
-		log.Printf("Visiting URL '%v'\n", r.URL)
+		// log.Printf("Visiting URL '%v'\n", r.URL)
 	})
 
 	c.OnHTML("a", func(e *colly.HTMLElement) {
 		regex := regexp.MustCompile(regex)
 
 		if regex.Match([]byte(e.Text)) {
-			log.Println("Found matching URL:", e.Attr("href"))
+			// log.Println("Found matching URL:", e.Attr("href"))
 			links = append(links, e.Attr("href"))
 		}
 

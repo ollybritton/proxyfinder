@@ -5,25 +5,16 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 )
 
-// Provider represents a website's proxies.
-type Provider struct {
-	name    string    // The url of the proxy website
-	proxies []url.URL // The list of proxies found on that website.
+// Providers maps the colloqial names of proxy providers to the function that returns their proxies.
+var Providers = map[string]func() []Proxy{
+	"freeproxylists": FreeProxyLists,
 }
 
-// FreeProxyListsHTTP returns all the HTTP proxies that it can find on the http://www.freeproxylists.com/ website.
-func FreeProxyListsHTTP() (proxies []url.URL) {
-
-	/*
-		Either in order to prevent scraping or to make fetching the proxies easier, this website will not load the proxies straight away. Instead, it will make a request to another URL which can be accessed using the "key" found in the original URL.
-
-		For example, if the original URL is "...elite/1556123424.html", the proxies can be found at ".../load_elite_1556123424.html".
-
-		The resource it points to is not actually a HTML resource. It is a XML document. This code does not do any fancy parsing of the XML document, and instead just uses regular expressions to match the proxies, then removing the XML open and close tags in between (I know, I'm very sorry).
-
-	*/
+// FreeProxyLists returns all the HTTP proxies that it can find on the http://www.freeproxylists.com/ website.
+func FreeProxyLists() (proxies []Proxy) {
 
 	initialLinks := FindLinks("http://www.freeproxylists.com/elite.html", `^elite #\d+`)
 
@@ -38,36 +29,39 @@ func FreeProxyListsHTTP() (proxies []url.URL) {
 		links = append(links, parsedLink)
 	}
 
+	var wg sync.WaitGroup
+
 	for _, link := range links {
-		log.Println("Scanning", link, "for proxies...")
+		wg.Add(1)
+		go func(l string) {
+			defer wg.Done()
 
-		doc, err := GetURL(link)
-		if err != nil {
-			return []url.URL{}
-		}
-
-		matches := proxyRegex.FindAllString(doc, -1)
-
-		for i := range matches {
-			matches[i] = strings.Replace(matches[i], "&lt;td&gt;", "", -1)
-			matches[i] = strings.Replace(matches[i], "&lt;/td&gt;", ":", 1)
-			matches[i] = strings.Replace(matches[i], "&lt;/td&gt;", "", 1)
-
-			parsedMatch, err := url.Parse("http://" + matches[i])
+			doc, err := GetURL(l)
 			if err != nil {
-				log.Printf("error parsing url %q: %v", matches[i], err.Error())
-				continue
+				return
 			}
 
-			proxies = append(proxies, *parsedMatch)
-		}
+			matches := proxyRegex.FindAllString(doc, -1)
+
+			for i := range matches {
+				matches[i] = strings.Replace(matches[i], "&lt;td&gt;", "", -1)
+				matches[i] = strings.Replace(matches[i], "&lt;/td&gt;", ":", 1)
+				matches[i] = strings.Replace(matches[i], "&lt;/td&gt;", "", 1)
+
+				parsedMatch, err := url.Parse("http://" + matches[i])
+				if err != nil {
+					log.Printf("error parsing url %q: %v", matches[i], err.Error())
+					continue
+				}
+
+				proxy := NewProxy(*parsedMatch, "freeproxylists")
+
+				proxies = append(proxies, proxy)
+			}
+		}(link)
 	}
 
-	return proxies
-}
+	wg.Wait()
 
-// Proxies will return a list of all the proxies it can find.
-func Proxies() (proxies []url.URL) {
-	proxies = append(proxies, FreeProxyListsHTTP()...)
 	return proxies
 }

@@ -7,5 +7,8 @@ import (
 )
 
 func main() {
-	fmt.Println(proxyfinder.Proxies())
+	proxyfinder.Load()
+	for i := 0; i < 3000; i++ {
+		fmt.Println(proxyfinder.Random().url)
+	}
 }
