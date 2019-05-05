@@ -4,23 +4,14 @@ import "net/url"
 
 // Proxy represents a URL that can be used.
 type Proxy struct {
-	url      url.URL
-	provider string
-}
-
-// URL returns the url.URL representation of the proxy.
-func (p *Proxy) URL() url.URL {
-	return p.url
-}
-
-// Provider returns the name of the provider.
-func (p *Proxy) Provider() string {
-	return p.provider
+	URL      url.URL
+	Provider string
+	Used     bool
 }
 
 // NewProxy is a convenience function for generating a new proxy struct.
 func NewProxy(url url.URL, provider string) Proxy {
-	return Proxy{url: url, provider: provider}
+	return Proxy{URL: url, Provider: provider, Used: false}
 }
 
 // UniqueProxies returns a list of proxies with all duplicates removed.

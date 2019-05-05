@@ -1,92 +1,68 @@
 # proxyfinder
-`proxyfinder` is a simple Go package for finding proxies. It works by congregating proxies from several different providers on the internet which can be accessed through a simple API.
+`proxyfinder` is a simple Go package for finding proxies. It works by congregating proxies from several different providers on the internet which can be accessed through a simple API. On my machine, it can fetch ~2500 proxies in roughly 2.6 seconds.
 
 - [proxyfinder](#proxyfinder)
   - [Usage](#usage)
-    - [Basic usage](#basic-usage)
     - [Loading proxies](#loading-proxies)
-    - [Getting proxies](#getting-proxies)
+    - [Accessing proxies](#accessing-proxies)
+    - [The `Proxy` type](#the-proxy-type)
+  - [More examples](#more-examples)
   - [Providers](#providers)
 
 ## Usage
-### Basic usage
-If you just want to get proxies and use them, use this:
+Proxies can be accessed through a `Broker`.
+
 ```go
-proxyfinder.Load() // Loads proxies into the program.
-
-proxy1 := proxyfinder.New() // Gets a new proxy, one that has not been used.
-proxy2 := proxyfinder.Random() // Gets a random proxy, might have been used previously.
-
-fmt.Println(proxy1.URL()) // Get url.URL representation of url.
-fmt.Println(proxy1.Provider()) // Get the proxy provider for that url.
+import (
+  "gitlab.com/ollybritton/proxyfinder"
+  "fmt"
+)
+proxies := proxyfinder.NewBroker()
+proxies.Load()
+fmt.Println(proxies.New())
 ```
 
 ### Loading proxies
-In order to load proxies into the program, two functions are avaliable: `Load` and `LoadProvider`.
-
-`Load` will load all proxies from all the providers. It is used like so:
-```go
-proxyfinder.Load() // Loads proxies from all providers into the program.
-```
-
-`LoadProvider` will only load proxies from one provider into the program. A list of providers is avaliable [here](#providers)
+All examples assume you have defined a broker named `proxies`, through a statement such as `proxies := proxyfinder.NewBroker()`.
 
 ```go
-proxyfinder.LoadProvider("freeproxylists")
+proxies.Load() // Load all proxies - this means deleting all old proxies and getting the new ones
+proxies.LoadProvider("freeproxylists") // Load only proxies from the `freeproxylists` provider.
+
+proxies.Fetch() // Fetch all proxies - get all proxies, but don't delete the old ones. This function respects duplicates.
+proxies.FetchProvider("freeproxylists") // Fetch only proxies from the `freeproxylists` provider.
+
+proxies.Purge() // Delete all proxies.
+proxies.PurgeProvider("freeproxylists") // Delete only proxies from the `freeproxylists` provider.
 ```
 
-Loading will delete existing proxies from that provider before fetching new ones. If you do not want this, use the functions `Fetch` and `FetchProvider`.
+`.Load()` is equivalent to a call to `.Purge()`, followed by a `.Fetch()`.
+
+### Accessing proxies
+After proxies have been loaded, you can use the following to access proxies.
+```go
+proxies.All() // Get a list of all proxies.
+proxies.Unused() // Get a list of all unused proxies.
+
+proxies.Random() // Pick a random proxy. This proxy may have been used already.
+proxies.New() // Pick a proxy that has not been used yet. 
+```
+
+### The `Proxy` type
+Functions return a `Proxy` type. `Proxy` is just a wrapper around `url.URL`, additionally containing information about the provider.
+
+For example:
 
 ```go
-proxyfinder.Fetch() // Fetch all proxies
-proxyfinder.FetchProvider("freeproxylists") // Fetch proxies from http://www.freeproxylists.com/
+proxies.Load()
+proxy := proxies.New()
+
+proxy.URL // Access the url.URL representation of the URL.
+proxy.Provider // Get the provider of the proxy.
 ```
 
-Please note `Fetch` respects duplicates, so it will not add multiple proxies with the same URL. If you want to delete proxies, then use `Purge` and `PurgeProvider`.
-
-```go
-proxyfinder.Fetch() // Fetch all proxies
-
-proxyfinder.PurgeProvider("foo") // Delete all proxies from the provider 'foo' (non-existent)
-proxyfinder.Purge() // Delete all proxies from all providers.
-```
-
-### Getting proxies
-To get all the proxies as a list:
-
-```go
-proxyfinder.All()
-```
-
-To get all unused proxies as a list:
-
-```go
-proxyfinder.Unused()
-```
-
-To get a single, unused proxy:
-
-```go
-proxyfinder.New()
-```
-
-To get a random proxy that might of been used:
-
-```go
-proxyfinder.Random()
-```
-
-Proxies are represented by the `Proxy` struct.
-
-```go
-proxyfinder.Load() // Load all proxies from all providers.
-
-proxy1 := proxyfinder.New() // Get a new proxy.
-proxy1.URL() // Get proxy1 as a url.URL type.
-proxy1.URL().String() // Get the string representation of the proxy.
-
-proxy1.Provider() // Get the proxy's provider.
-```
+## More examples
+More examples can be found in the `examples` folder.  
 
 ## Providers
 | URL                                                              | Name             |
