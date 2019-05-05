@@ -1,4 +1,6 @@
 # proxyfinder
+[![GoDoc](https://godoc.org/gitlab.com/ollybritton/proxyfinder?status.svg)](https://godoc.org/gitlab.com/ollybritton/proxyfinder)
+
 `proxyfinder` is a simple Go package for finding proxies. It works by congregating proxies from several different providers on the internet which can be accessed through a simple API. On my machine, it can fetch ~2500 proxies in roughly 2.6 seconds.
 
 - [proxyfinder](#proxyfinder)
