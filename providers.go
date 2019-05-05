@@ -1,7 +1,9 @@
 package proxyfinder
 
 import (
+	"io/ioutil"
 	"log"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -11,6 +13,7 @@ import (
 // Providers maps the colloqial names of proxy providers to the function that returns their proxies.
 var Providers = map[string]func() []Proxy{
 	"freeproxylists": FreeProxyLists,
+	"spysme":         SpysMe,
 }
 
 // FreeProxyLists returns all the HTTP proxies that it can find on the http://www.freeproxylists.com/ website.
@@ -64,4 +67,37 @@ func FreeProxyLists() (proxies []Proxy) {
 	wg.Wait()
 
 	return proxies
+}
+
+// SpysMe returns all the HTTP proxies that it can find on the website http://spys.me/proxy.txt
+func SpysMe() (proxies []Proxy) {
+	resp, err := http.Get("http://spys.me/proxy.txt")
+	if err != nil {
+		return []Proxy{}
+	}
+	defer resp.Body.Close()
+
+	// Response is 4 lines of metadata, follwed by a list of proxies, followed by 2 lines of more metadata.
+	// Each proxy is of the form:
+	// <IP>:<PORT> <INFO>
+	// Therefore, if we take the first item from the string splitted on a space, it will be the IP & PORT.
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	lines := strings.Split(string(body), "\n")
+	lines = lines[4 : len(lines)-2]
+
+	for _, line := range lines {
+		rawURL := "http://" + strings.Split(line, " ")[0]
+		proxyURL, err := url.Parse(rawURL)
+
+		if err != nil {
+			continue
+		}
+
+		proxies = append(proxies, NewProxy(*proxyURL, "spysme"))
+	}
+
+	return proxies
+
 }
