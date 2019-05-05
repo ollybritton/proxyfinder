@@ -1,9 +1,14 @@
 package proxyfinder
 
 import (
+	"log"
+	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/oschwald/geoip2-golang"
 )
 
 var (
@@ -32,6 +37,47 @@ func (b *Broker) Filter(filterFunc func(Proxy) bool) {
 	wg.Wait()
 
 	b.proxies = newproxies
+}
+
+// OnlyCountries is a method to restrict the proxies to specific countries.
+// It uses the MaxMind GeoIP2 Database, which needs to be installed for this to work.
+func (b *Broker) OnlyCountries(dbLocation string, isoCodes []string) {
+	var newproxies []Proxy
+	var wg sync.WaitGroup
+
+	db, err := geoip2.Open(dbLocation)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	for _, proxy := range b.proxies {
+
+		go func(p Proxy) {
+			wg.Add(1)
+			defer wg.Done()
+
+			rawIP := strings.Split(p.URL.Host, ":")[0]
+			ip := net.ParseIP(rawIP)
+
+			record, err := db.Country(ip)
+
+			if err != nil {
+				panic(err.Error())
+			}
+
+			for _, isoCode := range isoCodes {
+				if isoCode == record.Country.IsoCode {
+					newproxies = append(newproxies, p)
+				}
+			}
+		}(proxy)
+	}
+
+	wg.Wait()
+
+	b.proxies = newproxies
+
 }
 
 // CheckConnection checks that a proxy is working.
