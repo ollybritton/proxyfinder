@@ -7,11 +7,15 @@ import (
 )
 
 func main() {
+	// Create a new proxy broker
 	proxies := proxyfinder.NewBroker()
+
+	// Load proxies from all providers
 	fmt.Println("Downloading proxies...")
-	proxies.LoadProvider("proxylistdownload")
+	proxies.Load()
 
 	for i := 0; i < 10; i++ {
+		// Print the urls of 10 proxies.
 		proxy := proxies.New()
 		fmt.Println(proxy.URL.String())
 	}

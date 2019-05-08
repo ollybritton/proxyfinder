@@ -107,9 +107,7 @@ func SpysMe() (proxies []Proxy) {
 
 // ProxyListDownload returns all the HTTP proxies that it can find on the website https://www.proxy-list.download/HTTP.
 func ProxyListDownload() (proxies []Proxy) {
-	fmt.Println("Yoyoyo")
 	response, err := http.Get("https://www.proxy-list.download/api/v0/get?l=en&t=http")
-	fmt.Println("Yoyoyo")
 
 	if err != nil {
 		return []Proxy{}
@@ -122,16 +120,33 @@ func ProxyListDownload() (proxies []Proxy) {
 		return []Proxy{}
 	}
 
-	type ProxyResponse struct {
-		proxies []map[string]interface{} `json:"LISTA"`
+	type ProxyJSON struct {
+		IP   string `json:"IP"`
+		Port string `json:"PORT"`
+		ISO  string `json:"ISO"`
 	}
 
-	var result []ProxyResponse
+	type ProxyList struct {
+		Proxies []ProxyJSON `json:"LISTA"`
+	}
+
+	var result []ProxyList
 
 	json.Unmarshal(contents, &result)
 
-	fmt.Println(result)
+	for _, proxy := range result[0].Proxies {
+		ip, err := url.Parse("http://" + proxy.IP + ":" + proxy.Port)
 
-	return
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+
+		parsedProxy := NewProxy(*ip, "proxylistdownload")
+		parsedProxy.Country = proxy.ISO
+
+		proxies = append(proxies, parsedProxy)
+	}
+
+	return proxies
 
 }

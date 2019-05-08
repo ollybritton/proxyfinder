@@ -72,10 +72,10 @@ func (b *Broker) MarkCountries(dbLocation string) {
 	wg.Wait()
 }
 
-// OnlyCountries is a method to restrict the proxies to specific countries.
+// FilterCountries is a method to restrict the proxies to specific countries.
 // This method might not work as expected. Before using this, you likely have to call .MarkCountries() to add the country information.
 // The reason it is like this is because some proxies already have country information.
-func (b *Broker) OnlyCountries(isoCodes []string) {
+func (b *Broker) FilterCountries(isoCodes []string) {
 	var newproxies []Proxy
 	var wg sync.WaitGroup
 
