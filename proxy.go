@@ -5,8 +5,9 @@ import "net/url"
 // Proxy represents a URL that can be used.
 type Proxy struct {
 	URL      url.URL
-	Provider string
 	Used     bool
+	Provider string
+	Country  string
 }
 
 // NewProxy is a convenience function for generating a new proxy struct.

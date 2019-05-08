@@ -39,10 +39,9 @@ func (b *Broker) Filter(filterFunc func(Proxy) bool) {
 	b.proxies = newproxies
 }
 
-// OnlyCountries is a method to restrict the proxies to specific countries.
+// MarkCountries will append country information to the proxies contained by the broker.
 // It uses the MaxMind GeoIP2 Database, which needs to be installed for this to work.
-func (b *Broker) OnlyCountries(dbLocation string, isoCodes []string) {
-	var newproxies []Proxy
+func (b *Broker) MarkCountries(dbLocation string) {
 	var wg sync.WaitGroup
 
 	db, err := geoip2.Open(dbLocation)
@@ -51,13 +50,13 @@ func (b *Broker) OnlyCountries(dbLocation string, isoCodes []string) {
 	}
 	defer db.Close()
 
-	for _, proxy := range b.proxies {
+	for i, proxy := range b.proxies {
 
-		go func(p Proxy) {
+		go func(proxyIndex int, proxy Proxy) {
 			wg.Add(1)
 			defer wg.Done()
 
-			rawIP := strings.Split(p.URL.Host, ":")[0]
+			rawIP := strings.Split(proxy.URL.Host, ":")[0]
 			ip := net.ParseIP(rawIP)
 
 			record, err := db.Country(ip)
@@ -66,8 +65,28 @@ func (b *Broker) OnlyCountries(dbLocation string, isoCodes []string) {
 				panic(err.Error())
 			}
 
+			b.proxies[proxyIndex].Country = record.Country.IsoCode
+		}(i, proxy)
+	}
+
+	wg.Wait()
+}
+
+// OnlyCountries is a method to restrict the proxies to specific countries.
+// This method might not work as expected. Before using this, you likely have to call .MarkCountries() to add the country information.
+// The reason it is like this is because some proxies already have country information.
+func (b *Broker) OnlyCountries(isoCodes []string) {
+	var newproxies []Proxy
+	var wg sync.WaitGroup
+
+	wg.Add(len(b.proxies))
+	for _, proxy := range b.proxies {
+
+		go func(p Proxy) {
+			defer wg.Done()
+
 			for _, isoCode := range isoCodes {
-				if isoCode == record.Country.IsoCode {
+				if isoCode == p.Country {
 					newproxies = append(newproxies, p)
 				}
 			}

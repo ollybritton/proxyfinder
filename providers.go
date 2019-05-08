@@ -1,6 +1,8 @@
 package proxyfinder
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -12,8 +14,9 @@ import (
 
 // Providers maps the colloqial names of proxy providers to the function that returns their proxies.
 var Providers = map[string]func() []Proxy{
-	"freeproxylists": FreeProxyLists,
-	"spysme":         SpysMe,
+	"freeproxylists":    FreeProxyLists,
+	"spysme":            SpysMe,
+	"proxylistdownload": ProxyListDownload,
 }
 
 // FreeProxyLists returns all the HTTP proxies that it can find on the http://www.freeproxylists.com/ website.
@@ -99,5 +102,33 @@ func SpysMe() (proxies []Proxy) {
 	}
 
 	return proxies
+
+}
+
+// ProxyListDownload returns all the HTTP proxies that it can find on the website https://www.proxy-list.download/HTTP.
+func ProxyListDownload() (proxies []Proxy) {
+	fmt.Println("Yoyoyo")
+	response, err := http.Get("https://www.proxy-list.download/api/v0/get?l=en&t=http")
+	fmt.Println("Yoyoyo")
+
+	if err != nil {
+		return []Proxy{}
+	}
+
+	defer response.Body.Close()
+
+	contents, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return []Proxy{}
+	}
+
+	fmt.Println(string(contents))
+
+	var result map[string]interface{}
+
+	json.Unmarshal(contents, &result)
+	fmt.Println(result)
+
+	return
 
 }

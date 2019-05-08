@@ -8,7 +8,8 @@ import (
 
 func main() {
 	proxies := proxyfinder.NewBroker()
-	proxies.Load()
+	fmt.Println("Downloading proxies...")
+	proxies.LoadProvider("spysme")
 
 	for i := 0; i < 10; i++ {
 		proxy := proxies.New()
