@@ -9,7 +9,7 @@ import (
 func main() {
 	proxies := proxyfinder.NewBroker()
 	fmt.Println("Downloading proxies...")
-	proxies.LoadProvider("spysme")
+	proxies.LoadProvider("proxylistdownload")
 
 	for i := 0; i < 10; i++ {
 		proxy := proxies.New()

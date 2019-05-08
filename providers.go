@@ -122,11 +122,14 @@ func ProxyListDownload() (proxies []Proxy) {
 		return []Proxy{}
 	}
 
-	fmt.Println(string(contents))
+	type ProxyResponse struct {
+		proxies []map[string]interface{} `json:"LISTA"`
+	}
 
-	var result map[string]interface{}
+	var result []ProxyResponse
 
 	json.Unmarshal(contents, &result)
+
 	fmt.Println(result)
 
 	return
