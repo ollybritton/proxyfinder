@@ -23,8 +23,8 @@ func UniqueProxies(proxies []Proxy) []Proxy {
 	list := []Proxy{}
 
 	for _, entry := range proxies {
-		if _, value := keys[entry.URL.Host]; !value {
-			keys[entry.URL.Host] = true
+		if _, value := keys[entry.URL.Hostname()]; !value {
+			keys[entry.URL.Hostname()] = true
 			list = append(list, entry)
 		}
 	}
