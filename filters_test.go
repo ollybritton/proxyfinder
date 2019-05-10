@@ -2,10 +2,23 @@ package proxyfinder_test
 
 import (
 	"fmt"
+	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"gitlab.com/ollybritton/proxyfinder"
 )
+
+func TestBasicFilter(t *testing.T) {
+	proxies := proxyfinder.NewBroker()
+	proxies.Load()
+
+	proxies.Filter(func(p proxyfinder.Proxy) bool {
+		return p.URL.String() == "http://41.216.230.154:48705"
+	})
+
+	assert.Equal(t, len(proxies.All()), 1)
+}
 
 func ExampleBroker_Filter() {
 	// Create a new proxy broker.
