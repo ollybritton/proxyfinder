@@ -11,7 +11,11 @@ import (
 
 func TestBasicFilter(t *testing.T) {
 	proxies := proxyfinder.NewBroker()
-	proxies.Load()
+	err := proxies.Load()
+
+	if err != nil {
+		assert.Fail(t, err.Error())
+	}
 
 	proxies.Filter(func(p proxyfinder.Proxy) bool {
 		return p.URL.String() == "http://41.216.230.154:48705"
@@ -35,7 +39,12 @@ func ExampleCheckConnection() {
 	proxies.Load()
 
 	// Get a new proxy and check if it is valid.
-	proxy := proxies.New()
+	proxy, err := proxies.New()
+
+	if err != nil {
+		panic("unable to get new proxy; no unused proxies left")
+	}
+
 	fmt.Printf("Checking proxy %q:\n", proxy.URL.String())
 	fmt.Printf("Valid: %t\n", proxyfinder.CheckConnection(proxy))
 }
@@ -58,7 +67,12 @@ func ExampleCheckConnection_third() {
 	proxyfinder.TimeoutLength = 2 * time.Second
 
 	// Get a new proxy and check if it is valid.
-	proxy := proxies.New()
+	proxy, err := proxies.New()
+
+	if err != nil {
+		panic("unable to get new proxy; no unused proxies left")
+	}
+
 	fmt.Printf("Checking proxy %q:\n", proxy.URL.String())
 	fmt.Printf("Valid: %t\n", proxyfinder.CheckConnection(proxy))
 }

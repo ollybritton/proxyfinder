@@ -9,13 +9,14 @@ import (
 func main() {
 	// Create a new proxy broker and load all proxies from all providers into it.
 	proxies := proxyfinder.NewBroker()
-	proxies.Load()
+	proxies.LoadProvider("proxyscrape")
+	fmt.Println(proxies.All())
 
 	// Print the length of all the countries.
 	fmt.Printf("Length of all proxies: %d\n", len(proxies.All()))
 
 	// Check the connection on all the proxies, defaults to a timeout of 10 seconds.
-	proxies.Filter(proxyfinder.CheckConnection)
+	// proxies.Filter(proxyfinder.CheckConnection)
 
 	// Print the new length of proxies.
 	fmt.Printf("New Proxy Length: %d\n", len(proxies.All()))

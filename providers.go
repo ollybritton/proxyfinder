@@ -10,17 +10,22 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/imroc/req"
 )
 
 // Providers maps the colloqial names of proxy providers to the function that returns their proxies.
-var Providers = map[string]func() []Proxy{
+var Providers = map[string]func() ([]Proxy, error){
 	"freeproxylists":    FreeProxyLists,
 	"spysme":            SpysMe,
 	"proxylistdownload": ProxyListDownload,
+	"proxyscrape":       ProxyScrape,
+	"static":            Static,
 }
 
 // FreeProxyLists returns all the HTTP proxies that it can find on the http://www.freeproxylists.com/ website.
-func FreeProxyLists() (proxies []Proxy) {
+func FreeProxyLists() ([]Proxy, error) {
+	var proxies []Proxy
 
 	initialLinks := FindLinks("http://www.freeproxylists.com/elite.html", `^elite #\d+`)
 
@@ -36,6 +41,7 @@ func FreeProxyLists() (proxies []Proxy) {
 	}
 
 	var wg sync.WaitGroup
+	var proxyFetchError error
 
 	for _, link := range links {
 		wg.Add(1)
@@ -44,7 +50,7 @@ func FreeProxyLists() (proxies []Proxy) {
 
 			doc, err := GetURL(l)
 			if err != nil {
-				return
+				proxyFetchError = fmt.Errorf("unable to request freeproxylists: %v", err)
 			}
 
 			matches := proxyRegex.FindAllString(doc, -1)
@@ -68,15 +74,20 @@ func FreeProxyLists() (proxies []Proxy) {
 	}
 
 	wg.Wait()
+	if proxyFetchError != nil {
+		return []Proxy{}, proxyFetchError
+	}
 
-	return proxies
+	return proxies, nil
 }
 
 // SpysMe returns all the HTTP proxies that it can find on the website http://spys.me/proxy.txt
-func SpysMe() (proxies []Proxy) {
+func SpysMe() ([]Proxy, error) {
+	var proxies []Proxy
+
 	resp, err := http.Get("http://spys.me/proxy.txt")
 	if err != nil {
-		return []Proxy{}
+		return []Proxy{}, fmt.Errorf("unable to request spysme proxies: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -101,23 +112,25 @@ func SpysMe() (proxies []Proxy) {
 		proxies = append(proxies, NewProxy(*proxyURL, "spysme"))
 	}
 
-	return proxies
+	return proxies, nil
 
 }
 
 // ProxyListDownload returns all the HTTP proxies that it can find on the website https://www.proxy-list.download/HTTP.
-func ProxyListDownload() (proxies []Proxy) {
+func ProxyListDownload() ([]Proxy, error) {
+	var proxies []Proxy
+
 	response, err := http.Get("https://www.proxy-list.download/api/v0/get?l=en&t=http")
 
 	if err != nil {
-		return []Proxy{}
+		return []Proxy{}, fmt.Errorf("unable to request proxylistdownload: %v", err)
 	}
 
 	defer response.Body.Close()
 
 	contents, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return []Proxy{}
+		return []Proxy{}, fmt.Errorf("unable to read proxylistdownload response: %v", err)
 	}
 
 	type ProxyJSON struct {
@@ -132,13 +145,20 @@ func ProxyListDownload() (proxies []Proxy) {
 
 	var result []ProxyList
 
-	json.Unmarshal(contents, &result)
+	err = json.Unmarshal(contents, &result)
+	if err != nil {
+		return []Proxy{}, fmt.Errorf("error unmarshling response from proxylist-download site: %v", err)
+	}
+
+	if len(result) == 0 {
+		return []Proxy{}, fmt.Errorf("empty response from proxylist-download: %v", err)
+	}
 
 	for _, proxy := range result[0].Proxies {
 		ip, err := url.Parse("http://" + proxy.IP + ":" + proxy.Port)
 
 		if err != nil {
-			fmt.Println(err.Error())
+			return []Proxy{}, fmt.Errorf("unable to parse proxy url: %v", err)
 		}
 
 		parsedProxy := NewProxy(*ip, "proxylistdownload")
@@ -147,6 +167,75 @@ func ProxyListDownload() (proxies []Proxy) {
 		proxies = append(proxies, parsedProxy)
 	}
 
-	return proxies
+	return proxies, nil
 
+}
+
+// ProxyScrape will get proxies using the service http://proxyscrape.com.
+func ProxyScrape() ([]Proxy, error) {
+	var formatURL = "https://api.proxyscrape.com/?request=getproxies&proxytype=http&timeout=10000&country=%v&ssl=all&anonymity=all"
+	var countries = []string{"AF", "AL", "AM", "AR", "AT", "AU", "BA", "BD", "BG", "BO", "BR", "BY", "CA", "CL", "CM", "CN", "CO", "CZ", "DE", "EC", "EG", "ES", "FR", "GB", "GE", "GN", "GR", "GT", "HK", "HN", "HU", "ID", "IN", "IQ", "IR", "IT", "JP", "KE", "KG", "KH", "KR", "KZ", "LB", "LT", "LV", "LY", "MD", "MM", "MN", "MU", "MW", "MX", "MY", "NG", "NL", "NO", "NP", "PE", "PH", "PK", "PL", "PS", "PY", "RO", "RS", "RU", "SC", "SE", "SG", "SK", "SY", "TH", "TR", "TW", "TZ", "UA", "UG", "US", "VE", "VN", "ZA"}
+
+	var proxies []Proxy
+	var wg sync.WaitGroup
+
+	for _, country := range countries {
+		go func(country string) {
+			wg.Add(1)
+			defer wg.Done()
+
+			countryURL := fmt.Sprintf(formatURL, country)
+			r, err := req.Get(countryURL)
+
+			if err != nil {
+				return
+			}
+
+			list, err := r.ToString()
+			if err != nil {
+				return
+			}
+
+			proxyList := strings.Split(list, "\n")
+
+			for _, stringProxy := range proxyList {
+				parsedURL, err := url.Parse(strings.TrimSpace("http://" + stringProxy))
+				if err != nil {
+					return
+				}
+
+				proxy := NewProxy(*parsedURL, "proxyscrape")
+				proxy.Country = country
+
+				proxies = append(proxies, proxy)
+			}
+		}(country)
+
+	}
+
+	wg.Wait()
+
+	if len(proxies) == 0 {
+		return []Proxy{}, fmt.Errorf("no proxies gathered from proxyscrape provider")
+	}
+
+	return proxies, nil
+}
+
+// Static gets a saved offline static proxy list. Although this can be accessed when offline, it means
+// that the proxies can go offline while still appearing in this list.
+func Static() ([]Proxy, error) {
+	var proxies []Proxy
+
+	for _, rawURL := range staticProxies {
+		parsed, err := url.Parse(rawURL)
+		if err != nil {
+			return []Proxy{}, err
+		}
+
+		proxy := NewProxy(*parsed, "static")
+		proxies = append(proxies, proxy)
+	}
+
+	return proxies, nil
 }

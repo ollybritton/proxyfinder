@@ -78,16 +78,30 @@ func printProxies(count int, wantColor bool, raw bool) {
 	switch {
 	case raw:
 		for i := 0; i < count; i++ {
-			proxy := proxies.New()
-			fmt.Println(proxy.URL.String())
+			proxy, err := proxies.New()
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+			fmt.Println(proxy)
 		}
 	case wantColor:
 		for i := 0; i < count; i++ {
-			colorProxy(proxies.New())
+			proxy, err := proxies.New()
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+			colorProxy(proxy)
 		}
 	case !wantColor:
 		for i := 0; i < count; i++ {
-			noColorProxy(proxies.New())
+			proxy, err := proxies.New()
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+			noColorProxy(proxy)
 		}
 	}
 

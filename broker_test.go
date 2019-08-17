@@ -8,17 +8,24 @@ import (
 	"gitlab.com/ollybritton/proxyfinder"
 )
 
+var realProviders map[string]func() ([]proxyfinder.Proxy, error)
+
 // Here we change the proxyfinder.Providers variable so that methods such as `.Load()` load proxies from our dummy provider.
 // The problem is, if a proxy provider goes down (as it did for me), then the tests will fail, which is a problem since the issue isn't with the package, but with the provider.
 func init() {
+	realProviders = make(map[string]func() ([]proxyfinder.Proxy, error))
+
 	for key := range proxyfinder.Providers {
+		realProviders[key] = proxyfinder.Providers[key]
 		delete(proxyfinder.Providers, key)
 	}
 
 	proxyfinder.Providers["dummy"] = DummyProvider
 }
 
-func DummyProvider() (proxies []proxyfinder.Proxy) {
+func DummyProvider() ([]proxyfinder.Proxy, error) {
+	var proxies []proxyfinder.Proxy
+
 	proxyURLs := []string{"http://117.191.11.105:80",
 		"http://139.255.123.194:4550",
 		"http://41.216.230.154:48705",
@@ -34,14 +41,14 @@ func DummyProvider() (proxies []proxyfinder.Proxy) {
 	for _, proxyURL := range proxyURLs {
 		parsed, err := url.Parse(proxyURL)
 		if err != nil {
-			panic(err.Error())
+			return []proxyfinder.Proxy{}, err
 		}
 
 		proxy := proxyfinder.NewProxy(*parsed, "dummy")
 		proxies = append(proxies, proxy)
 	}
 
-	return proxies
+	return proxies, nil
 }
 
 // TestLoad checks that the .Load method of a broker works correctly.

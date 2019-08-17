@@ -16,7 +16,11 @@ func main() {
 
 	for i := 0; i < 10; i++ {
 		// Print the urls of 10 proxies.
-		proxy := proxies.New()
+		proxy, err := proxies.New()
+		if err != nil {
+			panic(err)
+		}
+
 		fmt.Println(proxy.URL.String())
 	}
 }

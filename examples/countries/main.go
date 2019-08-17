@@ -8,7 +8,9 @@ import (
 
 func main() {
 	proxies := proxyfinder.NewBroker()
-	proxies.Load()
+	proxies.LoadProvider("proxyscrape")
+	proxies.LoadProvider("spysme")
+	proxies.LoadProvider("freeproxylists")
 
 	// Two-digit iso codes for that country. Other names will not work.
 	locales := []string{"US", "CA", "MX", "AR", "DE", "BE", "NL", "IE", "ES", "IT", "CH"}
@@ -22,5 +24,9 @@ func main() {
 	// In order to add locale information to all proxies, you can use the following:
 	// proxies.MarkCountries("path/to/maxmind/geoip/database")
 
-	fmt.Println("Proxies after filter:", len(proxies.All()))
+	for _, proxy := range proxies.All() {
+		fmt.Println(proxy.URL.String())
+	}
+
+	// fmt.Println("Proxies after filter:", len(proxies.All()))
 }

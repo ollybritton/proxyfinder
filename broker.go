@@ -1,6 +1,7 @@
 package proxyfinder
 
 import (
+	"fmt"
 	"math/rand"
 	"sync"
 )
@@ -24,26 +25,39 @@ func (b *Broker) Add(proxies []Proxy) {
 }
 
 // FetchProvider fetches all the proxies from a given provider.
-func (b *Broker) FetchProvider(provider string) {
-	proxies := Providers[provider]()
+func (b *Broker) FetchProvider(provider string) error {
+	proxies, err := Providers[provider]()
+
+	if err != nil {
+		return err
+	}
 
 	b.Add(proxies)
+
+	return nil
 }
 
 // Fetch fetches all the proxies from all providers.
-func (b *Broker) Fetch() {
+func (b *Broker) Fetch() error {
 	var wg sync.WaitGroup
 
 	wg.Add(len(Providers))
+	var err error
 
 	for provider := range Providers {
 		go func(p string) {
 			defer wg.Done()
-			b.FetchProvider(p)
+			err = b.FetchProvider(p)
 		}(provider)
 	}
 
 	wg.Wait()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // PurgeProvider deletes all proxies from a given provider.
@@ -65,16 +79,24 @@ func (b *Broker) Purge() {
 }
 
 // LoadProvider will load all the proxies from a given provider.
-func (b *Broker) LoadProvider(provider string) {
+func (b *Broker) LoadProvider(provider string) error {
 	b.PurgeProvider(provider)
-	b.FetchProvider(provider)
+	err := b.FetchProvider(provider)
+
+	return err
 }
 
 // Load will load all proxies from all providers.
-func (b *Broker) Load() {
+func (b *Broker) Load() error {
 	for provider := range Providers {
-		b.LoadProvider(provider)
+		err := b.LoadProvider(provider)
+
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 /* Getting/Using Proxies */
@@ -116,19 +138,21 @@ func (b *Broker) Random() Proxy {
 }
 
 // New returns a new, unused proxy.
-func (b *Broker) New() Proxy {
+func (b *Broker) New() (Proxy, error) {
 	unused := b.Unused()
 
 	switch len(unused) {
 	case 0:
-		panic("No unused proxies left.")
+		return Proxy{}, fmt.Errorf("no unused proxies")
+
 	case 1:
 		chosen := unused[0]
 		b.Use(chosen)
-		return chosen
+		return chosen, nil
+
 	default:
 		chosen := unused[rand.Intn(len(unused)-1)]
 		b.Use(chosen)
-		return chosen
+		return chosen, nil
 	}
 }
