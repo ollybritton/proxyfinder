@@ -1,3 +1,5 @@
+> This project is no longer being maintained or worked on. For an up-to-date, more idiomatic proxy finding library, use [prox](https://github.com/ollybritton/prox).
+
 ![logo](https://github.com/ollybritton/Assets/raw/master/proxyfinder.jpg)
 [![GoDoc](https://godoc.org/gitlab.com/ollybritton/proxyfinder?status.svg)](https://godoc.org/gitlab.com/ollybritton/proxyfinder)
 
